@@ -807,4 +807,8 @@ local CredSection = cred:NewSection("Updates")
 
 CredSection:NewLabel("Added Aimlock, fixing silent aim soon.")
 CredSection:NewLabel("Added a troll section with new features.")
-CredSection:NewLabel("More Features coming soon.")
+CredSection:NewLabel("Fixed Infinite Jump Glitch.")
+CredSection:NewLabel("Changed them to synapse.")
+CredSection:NewLabel("Adding more games to the script soon.")
+CredSection:NewLabel("credits to rys.demise on discord.")
+
