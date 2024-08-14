@@ -1,0 +1,810 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("Ryware Hub", "Synapse")
+local Player = Window:NewTab("Player")
+local PlayerSection = Player:NewSection("Player Options")
+
+
+PlayerSection:NewSlider("Walkspeed", "Change WalkSpeed", 500, 16, function(s)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+end)
+
+PlayerSection:NewSlider("HipHeight", "Change Hip Height", 50, 2, function(h)
+    local character = game.Players.LocalPlayer.Character
+    if character and character:FindFirstChildOfClass("Humanoid") then
+        character.Humanoid.HipHeight = h
+    end
+end)
+
+PlayerSection:NewSlider("JumpHeight", "Change Your Character's Jump Height", 200, 10, function(jumpHeight)
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        humanoid.JumpHeight = jumpHeight
+        print("Jump Height set to: " .. jumpHeight)
+    else
+        print("Humanoid not found!")
+    end
+end)
+
+PlayerSection:NewToggle("Enable Infinite Zoom", "Allow zooming out indefinitely", function(state)
+    local player = game.Players.LocalPlayer
+
+    if state then
+        player.CameraMaxZoomDistance = math.huge
+    else
+        player.CameraMaxZoomDistance = 13
+    end
+end)
+
+PlayerSection:NewToggle("Infinite Jump", "Enable/Disable Infinite Jump", function(state)
+    infjmp = state
+
+    if infjmp then
+        game:GetService("UserInputService").jumpRequest:Connect(function()
+            local player = game.Players.LocalPlayer
+            local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid:ChangeState("Jumping")
+            end
+        end)
+    end
+end)
+
+local aim = Window:NewTab("Aim")
+local AimSection = aim:NewSection("Aim Options")
+
+local silentAimToggle = false -- Variable to keep track of the toggle state
+
+-- Silent Aim Script
+local silentAimScript = function()
+    getgenv().Silent = {
+        Setting = {
+            IsTargetting = true,
+            Prediction = 0.157,
+            TargetPart = "HumanoidRootPart",
+            WallCheck = true,
+            FOV = {
+                Radius = 50,
+                Visible = true
+            }
+        }
+    }
+
+    local Inset, Mouse, Client, Vector2New, Cam =
+        game:GetService("GuiService"):GetGuiInset().Y,
+        game.Players.LocalPlayer:GetMouse(),
+        game.Players.LocalPlayer,
+        Vector2.new,
+        workspace.CurrentCamera
+    local Targetting
+
+    local FOV = Drawing.new("Circle")
+    FOV.Transparency = 0.5
+    FOV.Thickness = 1.6
+    FOV.Color = Color3.fromRGB(230, 230, 250)
+    FOV.Filled = false
+
+    local UpdateFOV = function(Radius)
+        if (not FOV) then
+            return
+        end
+
+        FOV.Position = Vector2New(Mouse.X, Mouse.Y + (Inset))
+        FOV.Visible = getgenv().Silent.Setting.FOV["Visible"]
+        FOV.Radius = (Radius) * 3.067
+
+        return FOV
+    end
+
+    task.spawn(function() while task.wait() do UpdateFOV(getgenv().Silent.Setting.FOV["Radius"]) end end)
+
+    local WallCheck = function(destination, ignore)
+        if getgenv().Silent.Setting.WallCheck then
+            local Origin = Cam.CFrame.p
+            local CheckRay = Ray.new(Origin, destination - Origin)
+            local Hit = game.workspace:FindPartOnRayWithIgnoreList(CheckRay, ignore)
+            return Hit == nil
+        else
+            return true
+        end
+    end
+
+    local getClosestChar = function()
+        local Target, Closest = nil, 1 / 0
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if (v.Character and v ~= Client and v.Character:FindFirstChild("HumanoidRootPart")) then
+                local Position, OnScreen = Cam:WorldToScreenPoint(v.Character.HumanoidRootPart.Position)
+                local Distance = (Vector2New(Position.X, Position.Y) - Vector2New(Mouse.X, Mouse.Y)).Magnitude
+
+                if
+                    (FOV.Radius > Distance and Distance < Closest and OnScreen and
+                        WallCheck(v.Character.HumanoidRootPart.Position, {Client, v.Character}))
+                 then
+                    Closest = Distance
+                    Target = v
+                end
+            end
+        end
+        return Target
+    end
+
+    local Old
+    Old =
+        hookmetamethod(
+        game,
+        "__index",
+        function(self, key)
+            if self:IsA("Mouse") and key == "Hit" then
+                Targetting = getClosestChar()
+                if Targetting ~= nil then
+                    return Targetting.Character[getgenv().Silent.Setting.TargetPart].CFrame +
+                        (Targetting.Character[getgenv().Silent.Setting.TargetPart].Velocity *
+                            getgenv().Silent.Setting.Prediction)
+                end
+            end
+            return Old(self, key)
+        end
+    )
+end
+
+AimSection:NewToggle("Silent Aim *not working*", "Toggle Silent Aim On/Off", function(state)
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Silent Aim", Text = "Not Working Yet"})
+    silentAimToggle = state
+    if silentAimToggle then
+        silentAimScript() -- Run the Silent Aim script when the toggle is turned on
+    else
+        -- Optionally, you can add logic to disable the script here if needed
+    end
+end)
+
+AimSection:NewToggle("Wallbang", "Enable/Disable Wallbang", function(state)
+    local player = game.Players.LocalPlayer
+    local mouse = player:GetMouse()
+
+    if state then
+        -- Enable Wallbang
+        local function onShoot()
+            local target = mouse.Target
+            if target and target:IsA("BasePart") then
+                local hitPos = mouse.Hit.p
+
+                -- Check if the target is a wall
+                local ray = Ray.new(player.Character.Head.Position, (hitPos - player.Character.Head.Position).unit * 100)
+                local part, position = workspace:FindPartOnRay(ray, player.Character)
+
+                if part and part:IsDescendantOf(workspace) then
+                    -- Create a bullet effect or deal damage
+                    local bullet = Instance.new("Part")
+                    bullet.Size = Vector3.new(0.1, 0.1, 0.1)
+                    bullet.Position = player.Character.Head.Position
+                    bullet.Anchored = false
+                    bullet.CanCollide = false
+                    bullet.BrickColor = BrickColor.new("Bright red") -- Color of the bullet
+                    bullet.Parent = workspace
+
+                    local bodyVelocity = Instance.new("BodyVelocity")
+                    bodyVelocity.Velocity = (hitPos - bullet.Position).unit * 200 -- Speed of the bullet
+                    bodyVelocity.MaxForce = Vector3.new(1, 1, 1) * 5000
+                    bodyVelocity.Parent = bullet
+
+                    game:GetService("Debris"):AddItem(bullet, 2) -- Remove the bullet after 2 seconds
+                end
+            end
+        end
+
+        -- Connect the shooting function to the mouse button down
+        mouse.Button1Down:Connect(onShoot)
+    else
+        -- Disable Wallbang
+        mouse.Button1Down:Disconnect(onShoot)
+    end
+end)
+
+AimSection:NewToggle("Enable Aimlock", "Toggle the aimlock on/off", function(state)
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Aimlock Made By Ryware", Text = "C to enable"})
+    getgenv().OldAimPart = "HumanoidRootPart"
+    getgenv().AimPart = "UpperTorso" -- For R15 Games: {UpperTorso, LowerTorso, HumanoidRootPart, Head} | For R6 Games: {Head, Torso, HumanoidRootPart}  
+    getgenv().AimlockKey = "c" -- change to whatever you want, make sure it's lowercase
+    getgenv().AimRadius = 500 -- How far away from someone's character you want to lock on at
+    getgenv().ThirdPerson = true 
+    getgenv().FirstPerson = true
+    getgenv().TeamCheck = false -- Check if Target is on your Team (True means it won't lock onto your teammates, false is vice versa)
+    getgenv().PredictMovement = true -- Predicts if they are moving in fast velocity (like jumping)
+    getgenv().PredictionVelocity = 6.18
+    getgenv().CheckIfJumped = true
+    getgenv().Smoothness = false
+    getgenv().SmoothnessAmount = 0.5
+
+    local Players, Uis, RService, SGui = game:GetService("Players"), game:GetService("UserInputService"), game:GetService("RunService"), game:GetService("StarterGui")
+    local Client, Mouse, Camera, CF, RNew, Vec3, Vec2 = Players.LocalPlayer, Players.LocalPlayer:GetMouse(), workspace.CurrentCamera, CFrame.new, Ray.new, Vector3.new, Vector2.new
+    local Aimlock, MousePressed, CanNotify = true, false, false
+    local AimlockTarget
+    local OldPre
+
+    getgenv().WorldToViewportPoint = function(P)
+        return Camera:WorldToViewportPoint(P)
+    end
+
+    getgenv().WorldToScreenPoint = function(P)
+        return Camera.WorldToScreenPoint(Camera, P)
+    end
+
+    getgenv().GetObscuringObjects = function(T)
+        if T and T:FindFirstChild(getgenv().AimPart) and Client and Client.Character:FindFirstChild("Head") then 
+            local RayPos = workspace:FindPartOnRay(RNew(T[getgenv().AimPart].Position, Client.Character.Head.Position))
+            if RayPos then return RayPos:IsDescendantOf(T) end
+        end
+    end
+
+    getgenv().GetNearestTarget = function()
+        local players = {}
+        local PLAYER_HOLD = {}
+        local DISTANCES = {}
+        for i, v in pairs(Players:GetPlayers()) do
+            if v ~= Client then
+                table.insert(players, v)
+            end
+        end
+        for i, v in pairs(players) do
+            if v.Character ~= nil then
+                local AIM = v.Character:FindFirstChild("Head")
+                local DISTANCE = (v.Character:FindFirstChild("Head").Position - game.Workspace.CurrentCamera.CFrame.p).magnitude
+                local RAY = Ray.new(game.Workspace.CurrentCamera.CFrame.p, (Mouse.Hit.p - game.Workspace.CurrentCamera.CFrame.p).unit * DISTANCE)
+                local HIT, POS = game.Workspace:FindPartOnRay(RAY, game.Workspace)
+                local DIFF = math.floor((POS - AIM.Position).magnitude)
+                PLAYER_HOLD[v.Name .. i] = {dist = DISTANCE, plr = v, diff = DIFF}
+                table.insert(DISTANCES, DIFF)
+            end
+        end
+
+        if unpack(DISTANCES) == nil then
+            return nil
+        end
+
+        local L_DISTANCE = math.floor(math.min(unpack(DISTANCES)))
+        if L_DISTANCE > getgenv().AimRadius then
+            return nil
+        end
+
+        for i, v in pairs(PLAYER_HOLD) do
+            if v.diff == L_DISTANCE then
+                return v.plr
+            end
+        end
+        return nil
+    end
+
+    Mouse.KeyDown:Connect(function(a)
+        if not (Uis:GetFocusedTextBox()) then 
+            if a == getgenv().AimlockKey and AimlockTarget == nil then
+                pcall(function()
+                    if MousePressed ~= true then MousePressed = true end 
+                    local Target = GetNearestTarget()
+                    if Target ~= nil then 
+                        AimlockTarget = Target
+                    end
+                end)
+            elseif a == getgenv().AimlockKey and AimlockTarget ~= nil then
+                AimlockTarget = nil
+                MousePressed = false 
+            end
+        end
+    end)
+
+    RService.RenderStepped:Connect(function()
+        if getgenv().ThirdPerson == true and getgenv().FirstPerson == true then 
+            CanNotify = true 
+        elseif getgenv().ThirdPerson == true and getgenv().FirstPerson == false then 
+            CanNotify = true 
+        elseif getgenv().ThirdPerson == false and getgenv().FirstPerson == true then 
+            CanNotify = true 
+        end
+
+        if Aimlock and MousePressed then 
+            if AimlockTarget and AimlockTarget.Character and AimlockTarget.Character:FindFirstChild(getgenv().AimPart) then 
+                if getgenv().FirstPerson == true then
+                    if CanNotify == true then
+                        if getgenv().PredictMovement == true then
+                            if getgenv().Smoothness == true then
+                                local Main = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position + AimlockTarget.Character[getgenv().AimPart].Velocity / getgenv().PredictionVelocity)
+                                Camera.CFrame = Camera.CFrame:Lerp(Main, getgenv().SmoothnessAmount, Enum.EasingStyle.Elastic, Enum.EasingDirection.InOut)
+                            else
+                                Camera.CFrame = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position + AimlockTarget.Character[getgenv().AimPart].Velocity / getgenv().PredictionVelocity)
+                            end
+                        elseif getgenv().PredictMovement == false then 
+                            if getgenv().Smoothness == true then
+                                local Main = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position)
+                                Camera.CFrame = Camera.CFrame:Lerp(Main, getgenv().SmoothnessAmount, Enum.EasingStyle.Elastic, Enum.EasingDirection.InOut)
+                            else
+                                Camera.CFrame = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        if getgenv().CheckIfJumped == true and AimlockTarget.Character then
+            if AimlockTarget.Character.Humanoid.FloorMaterial == Enum.Material.Air then
+                getgenv().AimPart = "UpperTorso"
+            else
+                getgenv().AimPart = getgenv().OldAimPart
+            end
+        end
+    end)
+end)
+
+local tp = Window:NewTab("Teleport")
+local TeleportSection = tp:NewSection("Teleport Options")
+
+TeleportSection:NewTextBox("Teleport To Player", "Teleport to the specified player", function(username)
+    local player = game.Players:FindFirstChild(username)
+    
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPosition = player.Character.HumanoidRootPart.Position
+        game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(CFrame.new(targetPosition))
+        print("Teleported to " .. username)
+    else
+        print("Player not found or not in the game.")
+    end
+end)
+
+-- Toggle for Cursor Teleport
+local cursorTpEnabled = false
+
+TeleportSection:NewToggle("Cursor Tp", "Teleport to cursor when T is pressed", function(state)
+    cursorTpEnabled = state
+
+    if state then
+        -- Send notification when the toggle is turned on
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Cursor TP",
+            Text = "Click T to Teleport",
+            Duration = 5 -- The notification will be displayed for 5 seconds
+        })
+    end
+end)
+
+-- Teleport to cursor when T is pressed
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+
+mouse.KeyDown:Connect(function(key)
+    if key == "t" and cursorTpEnabled then
+        if mouse.Target then
+            player.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.p)
+        end
+    end
+end)
+
+-- Toggle for Hitbox Expander
+PlayerSection:NewToggle("Hitbox Expander", "Expand hitboxes when toggled", function(state)
+    if state then
+        -- Your Hitbox Expander Script
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Script", Text = "Loaded"})
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Script Owner", Text = "Made By Ryware"})
+        local player = game.Players.LocalPlayer
+        local mouse = player:GetMouse()
+
+        -- Settings
+        local bind = ""
+        local bind2 = "q"
+        local bind3 = "p"
+
+        -- Script
+        mouse.KeyDown:connect(function(key)
+            if key == bind then
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(1254.09656, 137.906067, -172.128204)
+            end
+        end)
+
+        mouse.KeyDown:connect(function(key2)
+            if key2 == bind2 then
+                _G.HeadSize = 17
+                _G.Disabled = true
+
+                if _G.Disabled then
+                    for i, v in next, game:GetService('Players'):GetPlayers() do
+                        if v.Name ~= game:GetService('Players').LocalPlayer.Name then
+                            pcall(function()
+                                v.Character.HumanoidRootPart.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
+                                v.Character.HumanoidRootPart.Transparency = 0.7
+                                v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Bright red")
+                                v.Character.HumanoidRootPart.Material = "Neon"
+                                v.Character.HumanoidRootPart.CanCollide = false
+                            end)
+                        end
+                    end
+                end
+            end
+        end)
+
+        mouse.KeyDown:connect(function(key3)
+            if key3 == bind3 then
+                _G.HeadSize = 17
+                _G.Disabled = true
+
+                for i, v in next, game:GetService('Players'):GetPlayers() do
+                    if v.Name ~= game:GetService('Players').LocalPlayer.Name then
+                        pcall(function()
+                            v.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
+                            v.Character.HumanoidRootPart.Transparency = 1
+                            v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Medium stone grey")
+                            v.Character.HumanoidRootPart.Material = "Plastic"
+                            v.Character.HumanoidRootPart.CanCollide = false
+                        end)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+PlayerSection:NewSlider("Hitbox Size", "Adjust the hitbox size", 50, 1, function(value)
+    _G.HeadSize = value -- Set the hitbox size to the slider value
+
+    -- Update existing players' hitbox size
+    for _, v in pairs(game:GetService('Players'):GetPlayers()) do
+        if v.Name ~= game.Players.LocalPlayer.Name and v.Character then
+            pcall(function()
+                v.Character.HumanoidRootPart.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
+            end)
+        end
+    end
+end)
+
+-- ESP Section
+local ESPSection = Window:NewTab("ESP")
+local ESPOptions = ESPSection:NewSection("ESP Options")
+
+local espEnabled = false
+local players = game:GetService("Players")
+local espHighlights = {}
+
+local function createNameESP(character, player)
+    if character:FindFirstChildOfClass("Humanoid") then
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Adornee = character:FindFirstChild("Head")
+        billboardGui.Size = UDim2.new(0, 100, 0, 50)
+        billboardGui.StudsOffset = Vector3.new(0, 2, 0) -- Offset above the head
+        billboardGui.AlwaysOnTop = true -- Always display on top
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Text = player.Name
+        textLabel.TextColor3 = Color3.new(1, 1, 1) -- White color
+        textLabel.BackgroundTransparency = 1 -- No background
+        textLabel.TextScaled = true
+
+        textLabel.Parent = billboardGui
+        billboardGui.Parent = character
+        espNames[character] = billboardGui -- Store the BillboardGui for later removal
+    end
+end
+local function applyESPToPlayer(player)
+    if player.Character then
+        createESP(player.Character)
+    end
+
+    player.CharacterAdded:Connect(function(character)
+        createESP(character)
+    end)
+end
+
+local function removeESP(character)
+    if character and espHighlights[character] then
+        espHighlights[character]:Destroy()
+        espHighlights[character] = nil -- Remove from the stored highlights
+    end
+end
+
+ESPOptions:NewToggle("Toggle ESP", "Highlight all players in red", function(state)
+    espEnabled = state
+
+    if espEnabled then
+        for _, player in ipairs(players:GetPlayers()) do
+            if player ~= players.LocalPlayer then
+                applyESPToPlayer(player)
+            end
+        end
+
+        players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                createESP(character)
+            end)
+            applyESPToPlayer(player)
+        end)
+
+        players.PlayerRemoving:Connect(function(player)
+            if player.Character then
+                removeESP(player.Character)
+            end
+        end)
+
+        -- Periodically check for new players without ESP
+        game:GetService("RunService").Heartbeat:Connect(function()
+            for _, player in ipairs(players:GetPlayers()) do
+                if player ~= players.LocalPlayer and player.Character and not espHighlights[player.Character] then
+                    createESP(player.Character)
+                end
+            end
+        end)
+    else
+        for _, player in ipairs(players:GetPlayers()) do
+            if player.Character then
+                removeESP(player.Character)
+            end
+        end
+        espHighlights = {} -- Clear the stored highlights when toggling off
+    end
+end)
+
+local espEnabled = false
+local players = game:GetService("Players")
+local espNames = {}
+
+local function createNameESP(character, player)
+    if character:FindFirstChildOfClass("Humanoid") then
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Adornee = character:FindFirstChild("Head")
+        billboardGui.Size = UDim2.new(0, 100, 0, 50)
+        billboardGui.StudsOffset = Vector3.new(0, 2, 0) -- Offset above the head
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Text = player.Name
+        textLabel.TextColor3 = Color3.new(0, 0, 0) -- Red color
+        textLabel.BackgroundTransparency = 1 -- No background
+        textLabel.TextScaled = true
+
+        textLabel.Parent = billboardGui
+        billboardGui.Parent = character
+        espNames[character] = billboardGui -- Store the BillboardGui for later removal
+    end
+end
+
+local function applyNameESPToPlayer(player)
+    if player.Character then
+        createNameESP(player.Character, player)
+    end
+
+    player.CharacterAdded:Connect(function(character)
+        createNameESP(character, player)
+    end)
+end
+
+local function removeNameESP(character)
+    if character and espNames[character] then
+        espNames[character]:Destroy()
+        espNames[character] = nil -- Remove from the stored names
+    end
+end
+
+ESPOptions:NewToggle("Toggle Name ESP", "Show player names above their heads", function(state)
+    espEnabled = state
+
+    if espEnabled then
+        for _, player in ipairs(players:GetPlayers()) do
+            if player ~= players.LocalPlayer then
+                applyNameESPToPlayer(player)
+            end
+        end
+
+        players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                createNameESP(character, player)
+            end)
+            applyNameESPToPlayer(player)
+        end)
+
+        players.PlayerRemoving:Connect(function(player)
+            if player.Character then
+                removeNameESP(player.Character)
+            end
+        end)
+    else
+        for _, player in ipairs(players:GetPlayers()) do
+            if player.Character then
+                removeNameESP(player.Character)
+            end
+        end
+        espNames = {} -- Clear the stored names when toggling off
+    end
+end)
+
+
+local fun = Window:NewTab("Trolling")
+local FunSection = fun:NewSection("Troll Options")
+
+-- SpinBot script
+local positive1 = 50 -- Speed of rotation
+local spinning = false -- Track if spinning is enabled
+
+-- Create the SpinBot toggle
+FunSection:NewToggle("Enable SpinBot", "Toggle SpinBot on/off", function(state)
+    spinning = state -- Update spinning state
+    if spinning then
+        -- Spin while the toggle is on
+        while spinning do
+            wait(0.1) -- Adjust the wait time for smoother spinning
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame =
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(positive1), 0)
+        end
+    end
+end)
+
+FunSection:NewToggle("Headless", "Toggle fake headless..", function(state)
+    local ply = game.Players.LocalPlayer
+    local chr = ply.Character
+
+    if state then
+        -- Set head transparency to 1
+        chr.Head.Transparency = 1
+        for i, v in pairs(chr.Head:GetChildren()) do
+            if v:IsA("Decal") then
+                v.Transparency = 1
+            end
+        end
+
+        -- Non-FE Korblox setup
+        chr.RightLowerLeg.MeshId = "902942093"
+        chr.RightLowerLeg.Transparency = "1"
+        chr.RightUpperLeg.MeshId = "http://www.roblox.com/asset/?id=902942096"
+        chr.RightUpperLeg.TextureID = "http://roblox.com/asset/?id=902843398"
+        chr.RightFoot.MeshId = "902942089"
+        chr.RightFoot.Transparency = "1"
+    else
+        -- Reset the character back to normal (optional)
+        chr.Head.Transparency = 0
+        for i, v in pairs(chr.Head:GetChildren()) do
+            if v:IsA("Decal") then
+                v.Transparency = 0
+            end
+        end
+
+        -- Reset Korblox parts back to normal (optional)
+        chr.RightLowerLeg.MeshId = "http://www.roblox.com/asset/?id=701302397"
+        chr.RightUpperLeg.MeshId = "http://www.roblox.com/asset/?id=701302395"
+        chr.RightFoot.MeshId = "http://www.roblox.com/asset/?id=701302399"
+    end
+end)
+
+FunSection:NewToggle("Low Gfx", "Toggle Low Graphics settings on/off", function(state)
+    local decalsyeeted = true -- Leaving this on makes games look shitty but the fps goes up by at least 20.
+    local g = game
+    local w = g.Workspace
+    local l = g.Lighting
+    local t = w.Terrain
+
+    if state then
+        t.WaterWaveSize = 0
+        t.WaterWaveSpeed = 0
+        t.WaterReflectance = 0
+        t.WaterTransparency = 0
+        l.GlobalShadows = false
+        l.FogEnd = 9e9
+        l.Brightness = 0
+        settings().Rendering.QualityLevel = "Level01"
+        
+        for i, v in pairs(g:GetDescendants()) do
+            if v:IsA("Part") or v:IsA("Union") or v:IsA("CornerWedgePart") or v:IsA("TrussPart") then
+                v.Material = "Plastic"
+                v.Reflectance = 0
+            elseif v:IsA("Decal") or v:IsA("Texture") and decalsyeeted then
+                v.Transparency = 1
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                v.Lifetime = NumberRange.new(0)
+            elseif v:IsA("Explosion") then
+                v.BlastPressure = 1
+                v.BlastRadius = 1
+            elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                v.Enabled = false
+            elseif v:IsA("MeshPart") then
+                v.Material = "Plastic"
+                v.Reflectance = 0
+                v.TextureID = 10385902758728957
+            end
+        end
+        
+        for i, e in pairs(l:GetChildren()) do
+            if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
+                e.Enabled = false
+            end
+        end
+    else
+        -- Optionally reset the graphics settings to default when toggled off
+        -- This can be done by re-setting properties to their original values or keeping it low
+        l.GlobalShadows = true
+        l.Brightness = 2
+        settings().Rendering.QualityLevel = "Level03" -- Adjust this to your preferred quality level
+    end
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Plr = Players.LocalPlayer
+
+local Noclip = nil
+local Clip = nil
+local floatName = "YourFloatPartName" -- Replace with the actual name of your float part if needed
+
+function noclip()
+    Clip = false
+    local function Nocl()
+        if Clip == false and Plr.Character ~= nil then
+            for _, v in pairs(Plr.Character:GetDescendants()) do
+                if v:IsA('BasePart') and v.CanCollide and v.Name ~= floatName then
+                    v.CanCollide = false
+                end
+            end
+        end
+        wait(0.21) -- Basic optimization
+    end
+    Noclip = RunService.Stepped:Connect(Nocl)
+end
+
+function clip()
+    if Noclip then Noclip:Disconnect() end
+    Clip = true
+end
+
+noclip() -- Start noclip function initially
+
+-- Toggle Noclip
+FunSection:NewToggle("Noclip", "Toggle noclip on/off", function(state)
+    if state then
+        noclip()
+        Status.Text = "on"
+        Status.TextColor3 = Color3.new(0, 185, 0)
+    else
+        clip()
+        Status.Text = "off"
+        Status.TextColor3 = Color3.new(170, 0, 0)
+    end
+end)
+
+FunSection:NewToggle("Remove Display Name", "Toggle to remove display names", function(state)
+    pcall(function()
+        for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+            if player.Character then
+                if player.Character:FindFirstChild("Humanoid") then
+                    if state then
+                        player.Character.Humanoid.DisplayName = player.Name
+                    else
+                        player.Character.Humanoid.DisplayName = ""
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+
+-- Zombie Animation toggle
+FunSection:NewToggle("Zombie Animation", "Toggle Zombie Animation on/off", function(state)
+    local ply = game.Players.LocalPlayer
+    local chr = ply.Character
+    local Animate = chr:WaitForChild("Animate")
+
+    if state then
+        while state do
+            Animate.walk.WalkAnim.AnimationId = "http://www.roblox.com/asset/?id=616168032"
+            Animate.run.RunAnim.AnimationId = "http://www.roblox.com/asset/?id=616163682"
+            chr.Humanoid.Jump = false
+            wait(1)
+        end
+    else
+        -- Reset animations to default (optional)
+        Animate.walk.WalkAnim.AnimationId = "http://www.roblox.com/asset/?id=507771019"
+        Animate.run.RunAnim.AnimationId = "http://www.roblox.com/asset/?id=507771019"
+    end
+end)
+
+local cred = Window:NewTab("Updates")
+local CredSection = cred:NewSection("Updates")
+
+CredSection:NewLabel("Added Aimlock, fixing silent aim soon.")
+CredSection:NewLabel("Added a troll section with new features.")
+CredSection:NewLabel("More Features coming soon.")
