@@ -1,0 +1,375 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("Ryware Hub", "BloodTheme")
+local Player = Window:NewTab("Player")
+local PlayerSection = Player:NewSection("Player Options")
+
+
+PlayerSection:NewSlider("Walkspeed", "Change WalkSpeed", 500, 16, function(s)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+end)
+
+PlayerSection:NewSlider("HipHeight", "Change Hip Height", 50, 2, function(h)
+    local character = game.Players.LocalPlayer.Character
+    if character and character:FindFirstChildOfClass("Humanoid") then
+        character.Humanoid.HipHeight = h
+    end
+end)
+
+PlayerSection:NewSlider("JumpHeight", "Change Your Character's Jump Height", 200, 10, function(jumpHeight)
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        humanoid.JumpHeight = jumpHeight
+        print("Jump Height set to: " .. jumpHeight)
+    else
+        print("Humanoid not found!")
+    end
+end)
+
+PlayerSection:NewToggle("Enable Infinite Zoom", "Allow zooming out indefinitely", function(state)
+    local player = game.Players.LocalPlayer
+
+    if state then
+        player.CameraMaxZoomDistance = math.huge
+    else
+        player.CameraMaxZoomDistance = 13
+    end
+end)
+
+PlayerSection:NewToggle("Infinite Jump", "Enable/Disable Infinite Jump", function(state)
+    infjmp = state
+
+    if infjmp then
+        game:GetService("UserInputService").jumpRequest:Connect(function()
+            local player = game.Players.LocalPlayer
+            local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid:ChangeState("Jumping")
+            end
+        end)
+    end
+end)
+
+local aim = Window:NewTab("Aim")
+local AimSection = aim:NewSection("Aim Options")
+
+AimSection:NewToggle("Wallbang", "Enable/Disable Wallbang", function(state)
+    local player = game.Players.LocalPlayer
+    local mouse = player:GetMouse()
+
+    if state then
+        -- Enable Wallbang
+        local function onShoot()
+            local target = mouse.Target
+            if target and target:IsA("BasePart") then
+                local hitPos = mouse.Hit.p
+
+                -- Check if the target is a wall
+                local ray = Ray.new(player.Character.Head.Position, (hitPos - player.Character.Head.Position).unit * 100)
+                local part, position = workspace:FindPartOnRay(ray, player.Character)
+
+                if part and part:IsDescendantOf(workspace) then
+                    -- Create a bullet effect or deal damage
+                    local bullet = Instance.new("Part")
+                    bullet.Size = Vector3.new(0.1, 0.1, 0.1)
+                    bullet.Position = player.Character.Head.Position
+                    bullet.Anchored = false
+                    bullet.CanCollide = false
+                    bullet.BrickColor = BrickColor.new("Bright red") -- Color of the bullet
+                    bullet.Parent = workspace
+
+                    local bodyVelocity = Instance.new("BodyVelocity")
+                    bodyVelocity.Velocity = (hitPos - bullet.Position).unit * 200 -- Speed of the bullet
+                    bodyVelocity.MaxForce = Vector3.new(1, 1, 1) * 5000
+                    bodyVelocity.Parent = bullet
+
+                    game:GetService("Debris"):AddItem(bullet, 2) -- Remove the bullet after 2 seconds
+                end
+            end
+        end
+
+        -- Connect the shooting function to the mouse button down
+        mouse.Button1Down:Connect(onShoot)
+    else
+        -- Disable Wallbang
+        mouse.Button1Down:Disconnect(onShoot)
+    end
+end)
+
+
+
+local tp = Window:NewTab("Teleport")
+local TeleportSection = tp:NewSection("Teleport Options")
+
+TeleportSection:NewTextBox("Teleport To Player", "Teleport to the specified player", function(username)
+    local player = game.Players:FindFirstChild(username)
+    
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPosition = player.Character.HumanoidRootPart.Position
+        game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(CFrame.new(targetPosition))
+        print("Teleported to " .. username)
+    else
+        print("Player not found or not in the game.")
+    end
+end)
+
+-- Toggle for Cursor Teleport
+local cursorTpEnabled = false
+
+TeleportSection:NewToggle("Cursor Tp", "Teleport to cursor when T is pressed", function(state)
+    cursorTpEnabled = state
+
+    if state then
+        -- Send notification when the toggle is turned on
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Cursor TP",
+            Text = "Click T to Teleport",
+            Duration = 5 -- The notification will be displayed for 5 seconds
+        })
+    end
+end)
+
+-- Teleport to cursor when T is pressed
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+
+mouse.KeyDown:Connect(function(key)
+    if key == "t" and cursorTpEnabled then
+        if mouse.Target then
+            player.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.p)
+        end
+    end
+end)
+
+-- Toggle for Hitbox Expander
+PlayerSection:NewToggle("Hitbox Expander", "Expand hitboxes when toggled", function(state)
+    if state then
+        -- Your Hitbox Expander Script
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Script", Text = "Loaded"})
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Script Owner", Text = "Made By Ryware"})
+        local player = game.Players.LocalPlayer
+        local mouse = player:GetMouse()
+
+        -- Settings
+        local bind = ""
+        local bind2 = "q"
+        local bind3 = "p"
+
+        -- Script
+        mouse.KeyDown:connect(function(key)
+            if key == bind then
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(1254.09656, 137.906067, -172.128204)
+            end
+        end)
+
+        mouse.KeyDown:connect(function(key2)
+            if key2 == bind2 then
+                _G.HeadSize = 17
+                _G.Disabled = true
+
+                if _G.Disabled then
+                    for i, v in next, game:GetService('Players'):GetPlayers() do
+                        if v.Name ~= game:GetService('Players').LocalPlayer.Name then
+                            pcall(function()
+                                v.Character.HumanoidRootPart.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
+                                v.Character.HumanoidRootPart.Transparency = 0.7
+                                v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Bright red")
+                                v.Character.HumanoidRootPart.Material = "Neon"
+                                v.Character.HumanoidRootPart.CanCollide = false
+                            end)
+                        end
+                    end
+                end
+            end
+        end)
+
+        mouse.KeyDown:connect(function(key3)
+            if key3 == bind3 then
+                _G.HeadSize = 17
+                _G.Disabled = true
+
+                for i, v in next, game:GetService('Players'):GetPlayers() do
+                    if v.Name ~= game:GetService('Players').LocalPlayer.Name then
+                        pcall(function()
+                            v.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
+                            v.Character.HumanoidRootPart.Transparency = 1
+                            v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Medium stone grey")
+                            v.Character.HumanoidRootPart.Material = "Plastic"
+                            v.Character.HumanoidRootPart.CanCollide = false
+                        end)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ESP Section
+local ESPSection = Window:NewTab("ESP")
+local ESPOptions = ESPSection:NewSection("ESP Options")
+
+local espEnabled = false
+local players = game:GetService("Players")
+local espHighlights = {}
+
+local function createNameESP(character, player)
+    if character:FindFirstChildOfClass("Humanoid") then
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Adornee = character:FindFirstChild("Head")
+        billboardGui.Size = UDim2.new(0, 100, 0, 50)
+        billboardGui.StudsOffset = Vector3.new(0, 2, 0) -- Offset above the head
+        billboardGui.AlwaysOnTop = true -- Always display on top
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Text = player.Name
+        textLabel.TextColor3 = Color3.new(1, 1, 1) -- White color
+        textLabel.BackgroundTransparency = 1 -- No background
+        textLabel.TextScaled = true
+
+        textLabel.Parent = billboardGui
+        billboardGui.Parent = character
+        espNames[character] = billboardGui -- Store the BillboardGui for later removal
+    end
+end
+local function applyESPToPlayer(player)
+    if player.Character then
+        createESP(player.Character)
+    end
+
+    player.CharacterAdded:Connect(function(character)
+        createESP(character)
+    end)
+end
+
+local function removeESP(character)
+    if character and espHighlights[character] then
+        espHighlights[character]:Destroy()
+        espHighlights[character] = nil -- Remove from the stored highlights
+    end
+end
+
+ESPOptions:NewToggle("Toggle ESP", "Highlight all players in red", function(state)
+    espEnabled = state
+
+    if espEnabled then
+        for _, player in ipairs(players:GetPlayers()) do
+            if player ~= players.LocalPlayer then
+                applyESPToPlayer(player)
+            end
+        end
+
+        players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                createESP(character)
+            end)
+            applyESPToPlayer(player)
+        end)
+
+        players.PlayerRemoving:Connect(function(player)
+            if player.Character then
+                removeESP(player.Character)
+            end
+        end)
+
+        -- Periodically check for new players without ESP
+        game:GetService("RunService").Heartbeat:Connect(function()
+            for _, player in ipairs(players:GetPlayers()) do
+                if player ~= players.LocalPlayer and player.Character and not espHighlights[player.Character] then
+                    createESP(player.Character)
+                end
+            end
+        end)
+    else
+        for _, player in ipairs(players:GetPlayers()) do
+            if player.Character then
+                removeESP(player.Character)
+            end
+        end
+        espHighlights = {} -- Clear the stored highlights when toggling off
+    end
+end)
+
+local espEnabled = false
+local players = game:GetService("Players")
+local espNames = {}
+
+local function createNameESP(character, player)
+    if character:FindFirstChildOfClass("Humanoid") then
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Adornee = character:FindFirstChild("Head")
+        billboardGui.Size = UDim2.new(0, 100, 0, 50)
+        billboardGui.StudsOffset = Vector3.new(0, 2, 0) -- Offset above the head
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Text = player.Name
+        textLabel.TextColor3 = Color3.new(0, 0, 0) -- Red color
+        textLabel.BackgroundTransparency = 1 -- No background
+        textLabel.TextScaled = true
+
+        textLabel.Parent = billboardGui
+        billboardGui.Parent = character
+        espNames[character] = billboardGui -- Store the BillboardGui for later removal
+    end
+end
+
+local function applyNameESPToPlayer(player)
+    if player.Character then
+        createNameESP(player.Character, player)
+    end
+
+    player.CharacterAdded:Connect(function(character)
+        createNameESP(character, player)
+    end)
+end
+
+local function removeNameESP(character)
+    if character and espNames[character] then
+        espNames[character]:Destroy()
+        espNames[character] = nil -- Remove from the stored names
+    end
+end
+
+ESPOptions:NewToggle("Toggle Name ESP", "Show player names above their heads", function(state)
+    espEnabled = state
+
+    if espEnabled then
+        for _, player in ipairs(players:GetPlayers()) do
+            if player ~= players.LocalPlayer then
+                applyNameESPToPlayer(player)
+            end
+        end
+
+        players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                createNameESP(character, player)
+            end)
+            applyNameESPToPlayer(player)
+        end)
+
+        players.PlayerRemoving:Connect(function(player)
+            if player.Character then
+                removeNameESP(player.Character)
+            end
+        end)
+    else
+        for _, player in ipairs(players:GetPlayers()) do
+            if player.Character then
+                removeNameESP(player.Character)
+            end
+        end
+        espNames = {} -- Clear the stored names when toggling off
+    end
+end)
+
+
+local Credits = Window:NewTab("Credits")
+local CreditsSection = Credits:NewSection("Credits Section")
+
+
+CreditsSection:NewLabel("Script was made by Ryware.")
+CreditsSection:NewLabel("This script is intended to be uses on MVSD.")
+CreditsSection:NewLabel("rys.demise on discord.")
