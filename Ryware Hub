@@ -51,6 +51,120 @@ PlayerSection:NewToggle("Infinite Jump", "Enable/Disable Infinite Jump", functio
     end
 end)
 
+local aim = Window:NewTab("Aim")
+local AimSection = aim:NewSection("Aim Options")
+
+AimSection:NewToggle("Wallbang *dosnt work*", "Enable/Disable Wallbang", function(state)
+    local player = game.Players.LocalPlayer
+    local mouse = player:GetMouse()
+    local weapon = nil
+
+    if state then
+        -- Enable Wallbang
+        local function onShoot()
+            if weapon == "Gun" then
+                -- Logic for gun shooting
+                local target = mouse.Target
+                if target and target:IsA("BasePart") then
+                    local hitPos = mouse.Hit.p
+
+                    -- Check if the target is a wall
+                    local ray = Ray.new(player.Character.Head.Position, (hitPos - player.Character.Head.Position).unit * 100)
+                    local part, position = workspace:FindPartOnRay(ray, player.Character)
+
+                    if part and part:IsDescendantOf(workspace) then
+                        -- Create a bullet effect or deal damage
+                        local bullet = Instance.new("Part")
+                        bullet.Size = Vector3.new(0.1, 0.1, 0.1)
+                        bullet.Position = player.Character.Head.Position
+                        bullet.Anchored = false
+                        bullet.CanCollide = false
+                        bullet.BrickColor = BrickColor.new("Bright red") -- Color of the bullet
+                        bullet.Parent = workspace
+
+                        local bodyVelocity = Instance.new("BodyVelocity")
+                        bodyVelocity.Velocity = (hitPos - bullet.Position).unit * 200 -- Speed of the bullet
+                        bodyVelocity.MaxForce = Vector3.new(1, 1, 1) * 5000
+                        bodyVelocity.Parent = bullet
+
+                        -- Check for damage through walls
+                        for _, v in pairs(game.Players:GetPlayers()) do
+                            if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                                local targetPos = v.Character.HumanoidRootPart.Position
+                                local distance = (targetPos - bullet.Position).magnitude
+
+                                -- Check if the target is within range
+                                if distance <= 200 then
+                                    -- Apply damage (replace this with actual damage logic)
+                                    v.Character.Humanoid:TakeDamage(20) -- Example damage value
+                                    print("Hit player: " .. v.Name)
+                                end
+                            end
+                        end
+
+                        game:GetService("Debris"):AddItem(bullet, 2) -- Remove the bullet after 2 seconds
+                    end
+                end
+            elseif weapon == "Knife" then
+                -- Logic for knife stabbing
+                local target = mouse.Target
+                if target and target:IsA("BasePart") then
+                    local hitPos = mouse.Hit.p
+
+                    -- Check if the target is a wall
+                    local ray = Ray.new(player.Character.Head.Position, (hitPos - player.Character.Head.Position).unit * 100)
+                    local part, position = workspace:FindPartOnRay(ray, player.Character)
+
+                    if part and part:IsDescendantOf(workspace) then
+                        -- Create a stab effect or deal damage
+                        local stabEffect = Instance.new("Part")
+                        stabEffect.Size = Vector3.new(0.1, 0.1, 0.1)
+                        stabEffect.Position = player.Character.Head.Position
+                        stabEffect.Anchored = false
+                        stabEffect.CanCollide = false
+                        stabEffect.BrickColor = BrickColor.new("Bright blue") -- Color of the stab effect
+                        stabEffect.Parent = workspace
+
+                        -- Check for damage through walls
+                        for _, v in pairs(game.Players:GetPlayers()) do
+                            if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                                local targetPos = v.Character.HumanoidRootPart.Position
+                                local distance = (targetPos - stabEffect.Position).magnitude
+
+                                -- Check if the target is within range
+                                if distance <= 200 then
+                                    -- Apply damage (replace this with actual damage logic)
+                                    v.Character.Humanoid:TakeDamage(15) -- Example damage value for knife
+                                    print("Hit player: " .. v.Name)
+                                end
+                            end
+                        end
+
+                        game:GetService("Debris"):AddItem(stabEffect, 2) -- Remove the stab effect after 2 seconds
+                    end
+                end
+            end
+        end
+
+        -- Listen for weapon changes (if you have a way to set the current weapon)
+        player.Backpack.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then
+                if child.Name:find("Gun") then
+                    weapon = "Gun"
+                elseif child.Name:find("Knife") then
+                    weapon = "Knife"
+                end
+            end
+        end)
+
+        -- Connect the shooting function to the mouse button down
+        mouse.Button1Down:Connect(onShoot)
+    else
+        -- Disable Wallbang
+        mouse.Button1Down:Disconnect(onShoot)
+    end
+end)
+
 local tp = Window:NewTab("Teleport")
 local TeleportSection = tp:NewSection("Teleport Options")
 
@@ -111,57 +225,73 @@ PlayerSection:NewToggle("Hitbox Expander", "Expand hitboxes when toggled", funct
         -- Script
         mouse.KeyDown:connect(function(key)
             if key == bind then
-                player.Character.HumanoidRootPart.CFrame = CFrame.new(1254.09656, 137.906067, -172.128204)
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)
+            end
+            if key == bind2 then
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(0, 0, 0)
+            end
+            if key == bind3 then
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(0, 0, 0)
             end
         end)
 
-        mouse.KeyDown:connect(function(key2)
-            if key2 == bind2 then
-                _G.HeadSize = 17
-                _G.Disabled = true
-
-                if _G.Disabled then
-                    for i, v in next, game:GetService('Players'):GetPlayers() do
-                        if v.Name ~= game:GetService('Players').LocalPlayer.Name then
-                            pcall(function()
-                                v.Character.HumanoidRootPart.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
-                                v.Character.HumanoidRootPart.Transparency = 0.7
-                                v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Bright red")
-                                v.Character.HumanoidRootPart.Material = "Neon"
-                                v.Character.HumanoidRootPart.CanCollide = false
-                            end)
-                        end
-                    end
+        -- Expand hitboxes for other players
+        local function expandHitbox(target)
+            if target and target.Character then
+                local humanoidRootPart = target.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    humanoidRootPart.Size = Vector3.new(10, 10, 10) -- Expand hitbox size
+                    humanoidRootPart.CanCollide = true
                 end
             end
+        end
+
+        for _, target in pairs(game.Players:GetPlayers()) do
+            if target ~= player then
+                expandHitbox(target)
+            end
+        end
+    end
+end)
+
+-- ESP (Extra Sensory Perception) Section
+local esp = Window:NewTab("ESP")
+local ESPOptions = esp:NewSection("ESP Options")
+
+ESPOptions:NewToggle("Toggle ESP", "Highlight all players in red", function(state)
+    espEnabled = state
+
+    if espEnabled then
+        for _, player in ipairs(players:GetPlayers()) do
+            if player ~= players.LocalPlayer then
+                applyESPToPlayer(player)
+            end
+        end
+
+        players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                createESP(character)
+            end)
+            applyESPToPlayer(player)
         end)
 
-        mouse.KeyDown:connect(function(key3)
-            if key3 == bind3 then
-                _G.HeadSize = 17
-                _G.Disabled = true
-
-                for i, v in next, game:GetService('Players'):GetPlayers() do
-                    if v.Name ~= game:GetService('Players').LocalPlayer.Name then
-                        pcall(function()
-                            v.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
-                            v.Character.HumanoidRootPart.Transparency = 1
-                            v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Medium stone grey")
-                            v.Character.HumanoidRootPart.Material = "Plastic"
-                            v.Character.HumanoidRootPart.CanCollide = false
-                        end)
-                    end
-                end
+        players.PlayerRemoving:Connect(function(player)
+            if player.Character then
+                removeESP(player.Character)
             end
         end)
+    else
+        for _, player in ipairs(players:GetPlayers()) do
+            if player.Character then
+                removeESP(player.Character)
+            end
+        end
     end
 end)
 
 local Credits = Window:NewTab("Credits")
 local CreditsSection = Credits:NewSection("Credits Section")
 
-
-
 CreditsSection:NewLabel("Script was made by Ryware.")
-CreditsSection:NewLabel("This script is intended to be uses on MVSD.")
+CreditsSection:NewLabel("This script is intended to be used on MVSD.")
 CreditsSection:NewLabel("rys.demise on discord.")
